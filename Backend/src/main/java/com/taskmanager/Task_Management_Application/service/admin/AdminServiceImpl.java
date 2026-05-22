@@ -38,10 +38,11 @@ public class AdminServiceImpl implements AdminService {
 
     // Get All Employees
     @Override
-    public List<UserDto> getUsers() {
+    public List<UserDto> getUsers(boolean includeInactive) {
 
         return userRepository.findAll().stream()
-                .filter(user -> user.getRole() == UserRole.EMPLOYEE && (user.getActive() == null || user.getActive()))
+                .filter(user -> user.getRole() == UserRole.EMPLOYEE)
+                .filter(user -> includeInactive || (user.getActive() == null || user.getActive()))
                 .map(User::getUserDto)
                 .collect(Collectors.toList());
     }

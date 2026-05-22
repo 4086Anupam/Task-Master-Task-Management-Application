@@ -20,6 +20,9 @@ export default function Sidebar({ onNavigate }) {
   const navigate = useNavigate();
   const { logout, user } = useAuthStore();
   const navItems = getNavItems(user?.role);
+  const displayName = user?.name || user?.email || 'User';
+  const displayEmail = user?.email || 'No email available';
+  const displayRole = user?.role || 'No role available';
 
   const handleLogout = () => {
     logout();
@@ -59,10 +62,12 @@ export default function Sidebar({ onNavigate }) {
       <div className="p-4 border-t border-border mt-auto">
         <div className="flex items-center space-x-3 px-4 py-3 mb-4 rounded-xl bg-muted/50">
           <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-            {user?.role?.charAt(0) || 'U'}
+            {displayName.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 overflow-hidden">
-            <p className="text-sm font-medium truncate">Role: {user?.role}</p>
+            <p className="text-sm font-medium truncate">{displayName}</p>
+            <p className="text-xs text-muted-foreground truncate">{displayEmail}</p>
+            <p className="text-xs text-muted-foreground truncate">Role: {displayRole}</p>
           </div>
         </div>
         <Button variant="outline" className="w-full justify-start text-destructive hover:bg-destructive/10" onClick={handleLogout}>

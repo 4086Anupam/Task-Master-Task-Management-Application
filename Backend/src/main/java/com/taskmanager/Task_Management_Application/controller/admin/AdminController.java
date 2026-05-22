@@ -19,10 +19,12 @@ public class AdminController {
     private final AdminService adminService;
 
     @GetMapping("/users")
-    public ResponseEntity<List<UserDto>> getUsers() {
+    public ResponseEntity<List<UserDto>> getUsers(
+            @RequestParam(defaultValue = "false") boolean includeInactive
+    ) {
 
         return ResponseEntity.ok(
-                adminService.getUsers()
+                adminService.getUsers(includeInactive)
         );
     }
 

@@ -1,8 +1,8 @@
 import api from '../lib/axios';
 
 export const AdminService = {
-  getUsers: async () => {
-    const response = await api.get('/admin/users');
+  getUsers: async (params = {}) => {
+    const response = await api.get('/admin/users', { params });
     return response.data;
   },
 
@@ -48,6 +48,11 @@ export const AdminService = {
 
   updateTaskStatus: async (id, status) => {
     const response = await api.put(`/admin/task/${id}/status?status=${status}`);
+    return response.data;
+  },
+
+  updateEmployeeTaskStatus: async (id, status) => {
+    const response = await api.put(`/employee/task/${id}/status?status=${status}`);
     return response.data;
   },
 

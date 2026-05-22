@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { AdminService } from '../services/admin.service';
+import useAuthStore from './authStore';
+import { DashboardService } from '../services/dashboard.service';
 
 const useTaskStore = create((set, get) => ({
   tasks: [],
@@ -9,7 +11,13 @@ const useTaskStore = create((set, get) => ({
   fetchTasks: async () => {
     set({ isLoading: true, error: null });
     try {
-      const tasks = await AdminService.getAllTasks();
+      const currentUser = useAuthStore.getState().user;
+      const isAdmin = currentUser?.role === 'ADMIN';
+
+      const tasks = isAdmin
+        ? await AdminService.getAllTasks()
+        : await DashboardService.filterTasks({});
+
       set({ tasks, isLoading: false });
     } catch (error) {
       set({ error: error.message, isLoading: false });
@@ -44,6 +52,9 @@ const useTaskStore = create((set, get) => ({
   },
 
   updateTaskStatus: async (id, status) => {
+    const currentUser = useAuthStore.getState().user;
+    const isAdmin = currentUser?.role === 'ADMIN';
+
     // Optimistic update
     const previousTasks = get().tasks;
     set((state) => ({
@@ -51,7 +62,11 @@ const useTaskStore = create((set, get) => ({
     }));
     
     try {
-      await AdminService.updateTaskStatus(id, status);
+      if (isAdmin) {
+        await AdminService.updateTaskStatus(id, status);
+      } else {
+        await AdminService.updateEmployeeTaskStatus(id, status);
+      }
     } catch (error) {
       // Revert on failure
       set({ tasks: previousTasks, error: error.message });

@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface AdminService {
 
-    List<UserDto> getUsers();
+    List<UserDto> getUsers(boolean includeInactive);
 
     void deleteUser(Long id);
 

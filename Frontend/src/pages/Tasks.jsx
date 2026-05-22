@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import useTaskStore from '../store/taskStore';
 import useProjectStore from '../store/projectStore';
 import useAuthStore from '../store/authStore';
@@ -202,6 +202,28 @@ export default function Tasks() {
   const { projects, fetchProjects } = useProjectStore();
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN';
+  const visibleTasks = useMemo(() => {
+    if (isAdmin) {
+      return tasks;
+    }
+
+    const currentUserId = user?.id ?? user?.userId;
+    if (!currentUserId) {
+      return [];
+    }
+
+    return tasks.filter((task) => {
+      const assigneeIds = new Set([
+        ...(task.assigneeIds || []).map(String),
+        ...(task.assignees || []).map((assignee) => String(assignee.id)),
+        task.userId ? String(task.userId) : null,
+      ].filter(Boolean));
+
+      const projectMemberIds = new Set((task.project?.members || []).map((member) => String(member.id)));
+
+      return assigneeIds.has(String(currentUserId)) || projectMemberIds.has(String(currentUserId));
+    });
+  }, [isAdmin, tasks, user?.id]);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newTask, setNewTask] = useState(emptyTaskForm);
@@ -332,7 +354,7 @@ export default function Tasks() {
   ];
 
   const handleTaskStatusChange = async (taskId, columnId) => {
-    const task = tasks.find(t => t.id === taskId);
+    const task = visibleTasks.find(t => t.id === taskId);
     if (!task || task.taskStatus === columnId) return;
     await updateTaskStatus(taskId, columnId);
   };
@@ -349,7 +371,7 @@ export default function Tasks() {
 
     const taskId = Number(active.id);
     const columnId = String(over.id);
-    const task = tasks.find(t => t.id === taskId);
+    const task = visibleTasks.find(t => t.id === taskId);
 
     if (!task || task.taskStatus === columnId) return;
     if (!columns.some(column => column.id === columnId)) return;
@@ -499,7 +521,7 @@ export default function Tasks() {
             <TaskColumn
               key={column.id}
               column={column}
-              tasks={tasks.filter(t => t.taskStatus === column.id)}
+              tasks={visibleTasks.filter(t => t.taskStatus === column.id)}
               isAdmin={isAdmin}
               onOpenEdit={openEditTask}
               onDelete={deleteTask}
@@ -514,7 +536,7 @@ export default function Tasks() {
           {activeTaskId ? (
             <div className="pointer-events-none select-none">
               <TaskPreviewCard
-                task={tasks.find(task => task.id === activeTaskId)}
+                task={visibleTasks.find(task => task.id === activeTaskId)}
                 getPriorityColor={getPriorityColor}
               />
             </div>

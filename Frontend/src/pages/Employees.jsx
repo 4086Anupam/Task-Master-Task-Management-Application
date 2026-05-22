@@ -23,6 +23,7 @@ export default function Employees() {
     const [projects, setProjects] = useState([]);
     const [tasks, setTasks] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [showInactiveUsers, setShowInactiveUsers] = useState(false);
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [employeeForm, setEmployeeForm] = useState(emptyEmployeeForm);
     const [statusMessage, setStatusMessage] = useState('');
@@ -35,15 +36,15 @@ export default function Employees() {
     const [categoryFilter, setCategoryFilter] = useState('ALL');
 
     useEffect(() => {
-        loadData();
-    }, []);
+        loadData(showInactiveUsers);
+    }, [showInactiveUsers]);
 
-    const loadData = async () => {
+    const loadData = async (includeInactive = false) => {
         setIsLoading(true);
         setErrorMessage('');
         try {
             const [users, projectList, taskList] = await Promise.all([
-                AdminService.getUsers(),
+                AdminService.getUsers({ includeInactive }),
                 ProjectService.getProjects(),
                 AdminService.getAllTasks(),
             ]);
@@ -128,7 +129,7 @@ export default function Employees() {
             setStatusMessage('Employee created successfully.');
             setEmployeeForm(emptyEmployeeForm);
             setIsCreateOpen(false);
-            await loadData();
+            await loadData(showInactiveUsers);
         } catch (error) {
             setErrorMessage(error?.response?.data || 'Unable to create employee.');
         } finally {
@@ -136,21 +137,27 @@ export default function Employees() {
         }
     };
 
-    const handleDeactivateEmployee = async (employee) => {
-        if (!confirm(`Deactivate ${employee.name}?`)) return;
+    const handleEmployeeStatusChange = async (employee) => {
+        const isInactive = employee.active === false;
+        const actionLabel = isInactive ? 'Reactivate' : 'Deactivate';
+        if (!confirm(`${actionLabel} ${employee.name}?`)) return;
         setErrorMessage('');
         setStatusMessage('');
         setDeletingIds(prev => new Set(prev).add(employee.id));
         try {
-            await AdminService.deactivateUser(employee.id);
+            if (isInactive) {
+                await AdminService.restoreUser(employee.id);
+            } else {
+                await AdminService.deactivateUser(employee.id);
+            }
             setStatusMessage(
                 <span>
-                    Employee deactivated. <button className="underline" onClick={async () => { await AdminService.restoreUser(employee.id); await loadData(); setStatusMessage('Employee restored.'); }}>Undo</button>
+                    Employee {isInactive ? 'restored' : 'deactivated'}. <button className="underline" onClick={async () => { await AdminService.restoreUser(employee.id); await loadData(showInactiveUsers); setStatusMessage('Employee restored.'); }}>Undo</button>
                 </span>
             );
-            await loadData();
+            await loadData(showInactiveUsers);
         } catch (error) {
-            setErrorMessage(error?.response?.data || 'Unable to deactivate employee.');
+            setErrorMessage(error?.response?.data || `Unable to ${isInactive ? 'restore' : 'deactivate'} employee.`);
         } finally {
             setDeletingIds(prev => {
                 const n = new Set(prev);
@@ -305,7 +312,7 @@ export default function Employees() {
                     <CardTitle>Filter Employees</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="grid gap-4 md:grid-cols-4">
+                    <div className="grid gap-4 md:grid-cols-5">
                         <div className="flex flex-col gap-2">
                             <Label htmlFor="employee-search">Search</Label>
                             <Input
@@ -361,6 +368,17 @@ export default function Employees() {
                                 </SelectContent>
                             </Select>
                         </div>
+                        <div className="flex flex-col gap-2">
+                            <Label>Inactive Users</Label>
+                            <Button
+                                type="button"
+                                variant={showInactiveUsers ? 'default' : 'outline'}
+                                onClick={() => setShowInactiveUsers(prev => !prev)}
+                                className="justify-start"
+                            >
+                                {showInactiveUsers ? 'Showing inactive users' : 'Show inactive users'}
+                            </Button>
+                        </div>
                     </div>
 
                     <div className="mt-4 flex items-center justify-end gap-3">
@@ -384,6 +402,9 @@ export default function Employees() {
                                     <div className="flex flex-wrap items-center gap-3">
                                         <CardTitle className="text-2xl">{employee.name}</CardTitle>
                                         <Badge variant="outline">{employee.role}</Badge>
+                                        <Badge variant={employee.active === false ? 'secondary' : 'outline'}>
+                                            {employee.active === false ? 'Inactive' : 'Active'}
+                                        </Badge>
                                     </div>
                                     <CardDescription className="flex items-center gap-2">
                                         <Mail size={14} />
@@ -392,12 +413,16 @@ export default function Employees() {
                                 </div>
                                 <Button
                                     variant="outline"
-                                    className="text-destructive hover:bg-destructive/10"
-                                    onClick={() => handleDeactivateEmployee(employee)}
+                                    className={employee.active === false ? 'text-emerald-700 hover:bg-emerald-500/10' : 'text-destructive hover:bg-destructive/10'}
+                                    onClick={() => handleEmployeeStatusChange(employee)}
                                     disabled={deletingIds.has(employee.id)}
                                 >
                                     <Trash2 size={14} className="mr-2" />
-                                    {deletingIds.has(employee.id) ? 'Working...' : 'Deactivate'}
+                                    {deletingIds.has(employee.id)
+                                        ? 'Working...'
+                                        : employee.active === false
+                                            ? 'Reactivate'
+                                            : 'Deactivate'}
                                 </Button>
                             </div>
                             <div className="grid gap-3 sm:grid-cols-2">
