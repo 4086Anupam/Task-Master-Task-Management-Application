@@ -1,0 +1,13 @@
+{
+  "name": "task-management-application",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "npm --prefix Frontend run dev",
+    "build": "npm --prefix Frontend run build",
+    "lint": "npm --prefix Frontend run lint",
+    "frontend:dev": "npm --prefix Frontend run dev",
+    "frontend:build": "npm --prefix Frontend run build",
+    "backend:run": "cd Backend && .\\mvnw.cmd spring-boot:run"
+  }
+}
